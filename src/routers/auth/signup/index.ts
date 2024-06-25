@@ -2,6 +2,7 @@ import { Router } from "express";
 import { body, validationResult } from "express-validator";
 import { hash } from "bcryptjs";
 import User from "../../../models/user";
+import { generateProfilePic } from "../../../utiles";
 
 const signupRouter = Router();
 
@@ -71,12 +72,14 @@ signupRouter.post("/signup",
             }
 
             const hashedPassword = await hash(password, 10);
+            const profileImage = generateProfilePic(email, 200);
 
             const user = new User({
                 username,
                 name,
                 email,
                 password: hashedPassword,
+                profile_image: profileImage,
             });
 
             await user.save();

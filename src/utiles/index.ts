@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextFunction, Request, Response } from "express";
 import { isValidObjectId } from "mongoose";
 
@@ -15,4 +16,10 @@ export function validateId(req: Request, res: Response, next: NextFunction) {
     }
 
     next();
+}
+
+export function generateProfilePic(email: string, size: number = 80) {
+    const trimmedEmail = email.trim().toLowerCase();
+    const hash = crypto.createHash("sha256").update(trimmedEmail).digest("hex");
+    return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=identicon`;
 }

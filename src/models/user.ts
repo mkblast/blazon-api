@@ -13,6 +13,7 @@ const User = mongoose.model("user", new Schema({
         default: [],
         required: true,
     }],
+    profile_image: { type: String, required: true }
 }));
 
 export default User;
