@@ -7,9 +7,12 @@ const postRouter = Router();
 
 postRouter.get("/posts", async (req, res, next) => {
     try {
-        const posts = await Post.find({ author: { $in: req.user?.following } })
-            .populate([{ path: "author", select: "username name" }])
-            .exec();
+        const posts = await Post.find({
+            $or: [
+                { author: { $in: req.user?.following } },
+                { author: req.user?._id },
+            ]
+        }).populate([{ path: "author", select: "username name" }]);
 
         return res.status(200).json({
             status: "Query succsed.",
