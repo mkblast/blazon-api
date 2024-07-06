@@ -5,6 +5,7 @@ import "./config/passport";
 import signupRouter from "./routers/auth/signup";
 import loginRouter from "./routers/auth/login";
 import postRouter from "./routers/main/posts";
+import meRouter from "./routers/main/me";
 import passport from "passport";
 import usersRouter from "./routers/main/users";
 import httpErrors from "http-errors";
@@ -28,7 +29,7 @@ app.use("/api/main/*",
     },
 );
 
-app.use("/api/main", postRouter, usersRouter);
+app.use("/api/main", postRouter, usersRouter, meRouter);
 
 app.use("/api/*", (req, res, next) => {
     next(httpErrors(404, "Route not found."));

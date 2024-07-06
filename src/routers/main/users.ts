@@ -2,12 +2,14 @@ import { NextFunction, Request, Response, Router } from "express";
 import User from "../../models/user";
 import Post from "../../models/post";
 import { validateId } from "../../utiles";
+import { body, validationResult } from "express-validator";
+import { stat } from "fs";
 
 const usersRouter = Router();
 
 usersRouter.get("/users", async (req, res, next) => {
     try {
-        const users = await User.find({ _id: { $nin: [req.user?._id] } }, "username name date").exec();
+        const users = await User.find({ _id: { $nin: [req.user?._id] } }, "-email -password").exec();
 
         return res.status(200).json({
             status: "Query succeed.",
@@ -23,7 +25,7 @@ usersRouter.get("/users/:userId",
 
     async (req, res, next) => {
         try {
-            const user = await User.findById(req.params.userId, "name username following date about").exec();
+            const user = await User.findById(req.params.userId, "-email -password").exec();
 
             if (user === null) {
                 return res.status(404).json({
@@ -41,15 +43,23 @@ usersRouter.get("/users/:userId",
         } catch (err) {
             next(err);
         }
-    });
+    }
+);
 
 usersRouter.get("/users/:userId/posts/",
     validateId,
 
     async (req, res, next) => {
         try {
+            const replyCondition = req.query.replies === "true" ? {} : { reply_to: null };
             const { userId } = req.params;
-            const posts = await Post.find({ author: userId }).exec();
+            const posts = await Post.find({
+                author: userId,
+                ...replyCondition
+            })
+                .populate([{ path: "author", select: "-email -password" }])
+                .sort({ date: -1 })
+                .exec();
 
             return res.status(200).json({
                 status: "Query succeed.",
@@ -91,11 +101,18 @@ usersRouter.post("/users/:userId/follow/",
         try {
             const { userId } = req.params;
 
+            if (userId === req.user?._id) {
+                return res.status(400).json({
+                    status: "Opetation succeed.",
+                    errors: [{ msg: "Cannot follow yourself" }]
+                });
+            }
+
             const user = await User.findOneAndUpdate(
                 { _id: req.user?._id },
                 { $addToSet: { following: userId } },
-                { new: true }
-            ).exec();
+                { new: true, fields: "-password -email" }
+            );
 
             return res.status(200).json({
                 status: "Operation succeed.",
@@ -117,11 +134,18 @@ usersRouter.delete("/users/:userId/follow/",
         try {
             const { userId } = req.params;
 
+            if (userId === req.user?._id) {
+                return res.status(400).json({
+                    status: "Opetation succeed.",
+                    errors: [{ msg: "Cannot unfollow yourself" }]
+                });
+            }
+
             const user = await User.findOneAndUpdate(
                 { _id: req.user?._id },
                 { $pull: { following: userId } },
-                { new: true }
-            ).exec();
+                { new: true, fields: "-password -email" }
+            );
 
             return res.status(200).json({
                 status: "Operation succeed.",
@@ -133,4 +157,5 @@ usersRouter.delete("/users/:userId/follow/",
         }
     }
 );
+
 export default usersRouter;

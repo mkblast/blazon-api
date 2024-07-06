@@ -1,4 +1,3 @@
-
 import mongoose, { Schema } from "mongoose";
 
 const Post = mongoose.model("post", new Schema({

@@ -8,11 +8,35 @@ const postRouter = Router();
 postRouter.get("/posts", async (req, res, next) => {
     try {
         const posts = await Post.find({
-            $or: [
-                { author: { $in: req.user?.following } },
-                { author: req.user?._id },
+            $and: [
+                {
+                    $or: [
+                        { author: { $in: req.user?.following } },
+                        { author: req.user?._id },
+                    ]
+                },
+                {
+                    reply_to: null
+                }
             ]
-        }).populate([{ path: "author", select: "username name" }]);
+        })
+            .populate([{ path: "author", select: "-email -password" }])
+            .sort({ date: -1 });
+
+        return res.status(200).json({
+            status: "Query succsed.",
+            posts,
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+postRouter.get("/posts/all", async (req, res, next) => {
+    try {
+        const posts = await Post.find({ reply_to: null })
+            .populate([{ path: "author", select: "-email -password" }])
+            .sort({ date: -1 });
 
         return res.status(200).json({
             status: "Query succsed.",
@@ -29,7 +53,9 @@ postRouter.get("/posts/:postId",
     async (req, res, next) => {
         try {
             const { postId } = req.params;
-            const post = await Post.findById({ postId }).exec();
+            const post = await Post.findOne({ _id: postId })
+                .populate([{ path: "author", select: "-email -password" }])
+                .exec();
 
             if (post === null) {
                 return res.status(404).json({
@@ -56,7 +82,9 @@ postRouter.get("/posts/:postId/replies",
     async (req, res, next) => {
         try {
             const { postId } = req.params;
-            const replies = await Post.find({ reply_to: postId }).exec();
+            const replies = await Post.find({ reply_to: postId })
+                .populate([{ path: "author", select: "-email -password" }])
+                .exec();
 
             return res.status(200).json({
                 status: "Query succsed.",
@@ -86,14 +114,14 @@ postRouter.post("/posts",
 
             const { body } = req.body;
 
-            const post = new Post({
+            const post = await (new Post({
                 body,
                 author: req.user?._id,
-            });
+            }).populate([{ path: "author", select: "-email -password" }]));
 
             await post.save();
 
-            return res.status(400).json({
+            return res.status(200).json({
                 status: "Posting succeed.",
                 post,
             });
@@ -125,11 +153,11 @@ postRouter.post("/posts/:postId/replies",
             const { body } = req.body;
             const { postId } = req.params!;
 
-            const post = new Post({
+            const post = await (new Post({
                 body,
                 author: req.user?._id,
                 reply_to: postId
-            });
+            }).populate([{ path: "author", select: "-email -password" }]));
 
             await post.save();
 
@@ -251,7 +279,7 @@ postRouter.post("/posts/:postId/like",
                 { _id: postId },
                 { $addToSet: { likes: req.user?._id } },
                 { new: true }
-            ).exec();
+            ).populate([{ path: "author", select: "-email -password" }]);
 
             if (post === null) {
                 return res.status(404).json({
@@ -284,7 +312,7 @@ postRouter.delete("/posts/:postId/like",
                 { _id: postId },
                 { $pull: { likes: req.user?._id } },
                 { new: true }
-            ).exec();
+            ).populate([{ path: "author", select: "-email -password" }]);
 
             if (post === null) {
                 return res.status(404).json({
